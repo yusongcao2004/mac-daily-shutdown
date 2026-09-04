@@ -92,3 +92,9 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 测试使用临时目录及模拟响应，不访问真实微信、不发送消息、不关机。
 
 参考依赖：[OpenClaw](https://github.com/openclaw/openclaw)、[Tencent openclaw-weixin](https://github.com/Tencent/openclaw-weixin)。
+
+## 开源许可
+
+本项目采用 [MIT License](LICENSE)，欢迎查看、下载、使用、修改和分发。第三方工具及服务仍适用各自的许可证与服务条款。
+
+无需 Git 即可在仓库页面点击 **Code → Download ZIP** 下载源码；macOS 应用需按上面的步骤在本机构建。
