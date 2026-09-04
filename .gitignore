@@ -1,0 +1,26 @@
+# Local config, evidence, and generated artifacts must never be committed.
+config.json
+activation.json
+.env
+.env.*
+!.env.example
+runtime/
+runs/
+reports/
+daily-report-state/
+*.jsonl
+*.log
+*.lock
+*.sqlite*
+*.db*
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.app/
+__pycache__/
+*.pyc
+.DS_Store
+build/
+dist/
+.venv/

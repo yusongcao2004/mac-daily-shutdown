@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const receipts=new URL('./test-receipts.jsonl',import.meta.url).pathname;
+process.env.DAILY_WECHAT_TARGET='test-self';process.env.DAILY_WECHAT_RECEIPTS=receipts;
+let response={ret:0};let calls=0;
+globalThis.fetch=async()=>{calls++;return new Response(JSON.stringify(response),{status:200});};
+await import('../src/verify_wechat.mjs');
+const request=(to='test-self')=>fetch('https://example.invalid/ilink/bot/sendmessage',{
+  method:'POST',body:JSON.stringify({msg:{to_user_id:to,client_id:'test-1'}})});
+if(fs.existsSync(receipts))fs.unlinkSync(receipts);
+await request();assert.equal(JSON.parse(fs.readFileSync(receipts,'utf8').trim()).accepted,true);
+response={ret:-14};await assert.rejects(request(),/rejected/);
+response={ret:0,errcode:400};await assert.rejects(request(),/rejected/);
+response={};await request();
+response={message_id:"server-123"};await request();
+response={message_id:123,ret:-2};await assert.rejects(request(),/rejected/);
+response={message_id:""};await assert.rejects(request(),/rejected/);
+response={unexpected:true};await assert.rejects(request(),/rejected/);
+response=null;await assert.rejects(request(),/rejected/);
+response={errmsg:"failed"};await assert.rejects(request(),/rejected/);
+const before=calls;await assert.rejects(request('someone-else'),/mismatch/);assert.equal(calls,before);
+assert.equal(fs.readFileSync(receipts,'utf8').trim().split('\n').length,10);
+console.log('PASS: API acceptance, expired session, nonzero error, empty success, unknown acknowledgement, recipient mismatch. No real network requests.');
+fs.unlinkSync(receipts);
