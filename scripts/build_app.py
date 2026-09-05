@@ -20,7 +20,7 @@ def main():
     executable.parent.mkdir(parents=True)
     resources = app/'Contents/Resources/backend'
     resources.mkdir(parents=True)
-    for name in ('runner.py', 'settings.py', 'daily_scan.py', 'verify_wechat.mjs', 'mail_brief.py'):
+    for name in ('runner.py', 'settings.py', 'daily_scan.py', 'verify_wechat.mjs', 'mail_brief.py', 'codex_runtime.py'):
         shutil.copy2(ROOT/'src'/name, resources/name)
     info = {
         'CFBundleExecutable': 'DailyShutdown',

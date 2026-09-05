@@ -17,6 +17,7 @@ import sys
 import time
 from zoneinfo import ZoneInfo
 from mail_brief import collect_mail
+from codex_runtime import resolve_codex, runtime_version, process_error
 from settings import APP_HOME, CONFIG, CONFIG_PATH, OPENCLAW_HOME, CODEX_HOME_PATH, configured_path
 
 HERE = Path(__file__).resolve().parent
@@ -28,7 +29,7 @@ SUMMARIES = configured_path('history_summaries', CODEX_HOME_PATH/'memories/exten
 ACCOUNT = CONFIG.get('wechat_account', '')
 TARGET = CONFIG.get('wechat_target', '')
 BERLIN = ZoneInfo(CONFIG.get('timezone', 'Europe/Berlin'))
-CODEX_BINARY = CONFIG.get('codex_binary', '/opt/homebrew/bin/codex')
+CODEX_BINARY = None
 OPENCLAW_BINARY = CONFIG.get('openclaw_binary', '/opt/homebrew/bin/openclaw')
 ENV = {**os.environ, 'PATH':'/opt/homebrew/bin:/opt/homebrew/opt/node@24/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'}
 
@@ -43,7 +44,9 @@ def execute(args, timeout, log=None, env=None, stdin=None):
         text=True, env=env or ENV, start_new_session=True)
     try:
         result,_ = child.communicate(stdin, timeout=timeout)
-        if child.returncode: raise RuntimeError(f'{Path(args[0]).name} failed (exit {child.returncode}); see local log.')
+        if child.returncode:
+            if log: stream.flush()
+            raise process_error(args[0], child.returncode, log)
         return result or ''
     except BaseException:
         try: os.killpg(child.pid, signal.SIGTERM)
@@ -146,7 +149,7 @@ def collect(run):
         except OSError:continue
         if len(packet['file_excerpt'])>=12:break
     update('读取重要邮件与未来24小时日程')
-    packet['mail_brief']=collect_mail(run,packet,execute,CODEX_BINARY,CONFIG.get('mail_brief', {}))
+    packet['mail_brief']=collect_mail(run,packet,execute,CODEX_BINARY or resolve_codex(CONFIG.get('codex_binary', 'auto')),CONFIG.get('mail_brief', {}))
     path=run/'evidence.json';path.write_text(json.dumps(packet,ensure_ascii=False,indent=2))
     return packet,path
 
@@ -163,7 +166,7 @@ def generate(run,packet,evidence):
 mail_brief是本次通过连接器采集的邮件与日程结果，必须把important_mail、upcoming_schedule和attention_items融入文字日报，并逐项说明sources的实际账号和覆盖限制。status不是complete时明确“邮件/日历覆盖不完整”，不能写成全部没有新邮件。不要把账号完整地址写到图片中，图片用个人邮箱/工作邮箱等标签。旧邮件只在有新进展、需处理或临近截止时提醒。必须把邮件行动请求与本次电脑记录中的已发送回复、已办结证据交叉核对；已回复或完成的事项不能再次标为未处理，处理状态缺少证据时注明待核对。
 仅依据证据，区别浏览、讨论、草稿与完成，mtime不证明内容变动，metadata_only不是新成果，后台产物不归为用户亲手完成；没有记录的时间不猜测睡眠或休息。摘要段落中的时间可能为UTC，必须以原始timestamp核对并统一转配置时区，不能把UTC小时直接写进日报。report_workflow_state是本日报程序实际安装状态，目录排除不证明未实现；不能把contact.jpg仅凭文件名翻译成联系人图片。优先关注具体成果，不对自律作评价，不给新的医疗、财务或法律建议。可读重要源文件的小段以核对，但禁止读凭证、网络调查、修改源文件、发送消息、调用关机、修改自动化/长期记忆或启动子代理。仅能写当前工作目录。所有时间统一采用配置时区 {BERLIN.key}，不要因默认模板写成其他时区。
 用户希望附一张ChatGPT Image图片：使用 imagegen 技能及实际可调用的内置 image_gen__imagegen 生成恰好1张信息充实且清晰可读的中文日报长图，建议1:2竖版、高分辨率，温暖米白与深蓝的编辑风格，标题“关机前 · 24小时日报”并写准确日期范围。用户明确不喜欢信息稀少的封面卡：图片必须能独立阅读，包含约500-800个有依据的中文字，分为关键结果、4-6项带时间的活动线索、实际推进、具体文件变化、邮件与近期日程、最多3项待续事项、简短覆盖说明；邮件与近期日程板块至少包含重要来信行动、下一场安排或明确的无新增/覆盖不完整状态。以具体项目、成果、文件名称和下一步为主，注明已完成/讨论中/后台记录；数字只用可靠证据。标题和装饰占比小，正文占75%以上，采用舒适行距和清晰大字，不用巨大图标或空白挤掉内容。文件数字区分元数据变化与创建/修改时间线索，不能把候选文件数当作成果；contact sheet译为拼版预览图。不要泄露邮箱、账号ID、合同薪资、个人聊天原文。图文必须基于这次证据。实际调用工具并读取结果，返回真实图片路径，不能虚构；若工具没有图像生成能力或失败，返回null并说明，只交文字。不要使用API key、外部替代生图服务、自己写代码画图替代ChatGPT Image。生成图片可能需要几分钟；无需另外向用户确认。最终仅返回符合Schema的JSON。'''
-    execute([CODEX_BINARY,'exec','--skip-git-repo-check','--sandbox','workspace-write',
+    execute([CODEX_BINARY or resolve_codex(CONFIG.get('codex_binary', 'auto')),'exec','--skip-git-repo-check','--sandbox','workspace-write',
         '--ephemeral','-C',str(run),'--json','--output-schema',str(schema),'-o',str(result),'-'],
         timeout=1500,log=run/'generation.log',stdin=prompt)
     data=json.loads(result.read_text())
@@ -214,6 +217,7 @@ def send_part(run,kind,text=None,image=None):
         raise RuntimeError('未取得微信接口明确成功回执；保留电脑运行，请查看手机，勿盲目重发。')
 
 def main():
+    global CODEX_BINARY
     parser=argparse.ArgumentParser();parser.add_argument('--mode',choices=['preview','send'],default='preview')
     parser.add_argument('--prepared',type=Path);args=parser.parse_args()
     activation=CONFIG_PATH
@@ -230,6 +234,10 @@ def main():
         data=json.loads((run/'result.json').read_text());images=list(run.glob('daily-image.*'));image=images[0] if images else None
     else:
         run=ROOT/'runs'/dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ');run.mkdir(parents=True)
+        CODEX_BINARY=resolve_codex(CONFIG.get('codex_binary', 'auto'))
+        version='.'.join(map(str,runtime_version(CODEX_BINARY)))
+        (run/'runtime.json').write_text(json.dumps({'binary':CODEX_BINARY,'version':version},ensure_ascii=False))
+        update('已选择 Codex CLI '+version)
         update('读取前24小时使用记录与文件变更',run=str(run));packet,evidence=collect(run)
         update('生成中文日报与 ChatGPT Image 图片，通常需要数分钟')
         data,image=generate(run,packet,evidence)

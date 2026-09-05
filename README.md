@@ -53,7 +53,9 @@ python3 scripts/configure.py --account YOUR_OPENCLAW_WEIXIN_ACCOUNT
 
 配置写入 `~/Library/Application Support/DailyShutdown/config.json`，初始 `approved` 为 `false`。阅读下方数据说明，确认后在本地改为 `true`；也可在配置命令添加 `--approve` 明确授权。配置脚本不会复制登录凭证。
 
-本地配置中的 `scan_roots` 默认是桌面、文稿、下载，按需加入项目目录。核对 `timezone`（默认 `Europe/Berlin`）、`codex_binary`、`openclaw_binary`。可选 `history_segments`、`history_summaries`、`openclaw_home`、`codex_home` 覆盖默认路径。
+本地配置中的 `scan_roots` 默认是桌面、文稿、下载，按需加入项目目录。Codex 默认使用 `codex_binary: "auto"`，每次运行比较桌面应用内置版本与独立 CLI，选择本机可运行的较新版本，继续使用现有模型设置。显式填写路径时尊重该路径；如提示模型需要新版 Codex，请更新该安装或改回 `auto`。所用路径及版本记在本次 `runtime.json`。
+
+核对 `timezone`（默认 `Europe/Berlin`）、`codex_binary`、`openclaw_binary`。可选 `history_segments`、`history_summaries`、`openclaw_home`、`codex_home` 覆盖默认路径。
 
 在手机微信给已连接的机器人发一句话刷新会话，然后先使用“仅发送日报，不关机”确认效果，再使用关机按钮。
 

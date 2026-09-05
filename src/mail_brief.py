@@ -2,6 +2,7 @@
 import datetime as dt
 import json
 from pathlib import Path
+from codex_runtime import CodexCompatibilityError
 
 SOURCE_SCHEMA = {'type': 'object', 'properties': {
     'source': {'type': 'string', 'enum': ['gmail', 'outlook', 'calendar']},
@@ -80,6 +81,8 @@ Calendar：核对账号，查primary日历未来24小时，展示事件当地时
             '--ephemeral', '-C', str(run), '--json', '--output-schema', str(schema), '-o', str(result), '-'],
             timeout=600, log=run/'mail-collection.log', stdin=prompt)
         data = normalize(json.loads(result.read_text()), options.get('expected_accounts', {}))
+    except CodexCompatibilityError:
+        raise
     except Exception as error:
         data = {'status': 'partial', 'sources': [
             {'source': source, 'account': None, 'status': 'unavailable',

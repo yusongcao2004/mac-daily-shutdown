@@ -4,6 +4,6 @@
   "wechat_target": "YOUR_SELF_USER_ID@im.wechat",
   "timezone": "Europe/Berlin",
   "scan_roots": ["~/Desktop", "~/Documents", "~/Downloads"],
-  "codex_binary": "/opt/homebrew/bin/codex",
+  "codex_binary": "auto",
   "openclaw_binary": "/opt/homebrew/bin/openclaw"
 }
